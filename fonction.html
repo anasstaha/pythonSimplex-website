@@ -1,0 +1,144 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Fonction et Contraintes - Simplex Solver</title>
+  <link rel="stylesheet" href="fonction.css">
+</head>
+<body>
+  <header>
+    <nav>
+      <h1>PHPSimplex</h1>
+      <ul>
+        <li><a href="index.html">Commencer</a></li>
+        <li><a href="#">Théorie</a></li>
+        <li><a href="#">Exemples</a></li>
+        <li><a href="#">Aide</a></li>
+        <li><a href="#">Quitter</a></li>
+      </ul>
+    </nav>
+  </header>
+
+  <main>
+    <section class="container">
+      <h2>Définir la fonction et les contraintes</h2>
+      <p>Indiquez la fonction objectif et les contraintes de votre problème :</p>
+
+      <form id="fonctionForm" novalidate>
+        <div class="objectif">
+          <label for="objectif">Quel est le but de la fonction ?</label>
+          <select id="objectif" required>
+            <option value="">--Choisir--</option>
+            <option value="max">Maximiser</option>
+            <option value="min">Minimiser</option>
+          </select>
+          <div class="error-message" id="objectif-error"></div>
+        </div>
+
+        <div class="fonction">
+          <label for="a1">Fonction :</label>
+          <input id="a1" type="number" step="any" placeholder="a₁"> X₁ +
+          <input id="a2" type="number" step="any" placeholder="a₂"> X₂
+          <div class="error-message" id="fonction-error"></div>
+        </div>
+
+        <div class="contraintes">
+          <h3>Contraintes</h3>
+
+          <div class="ligne">
+            <input id="b1" type="number" step="any" placeholder="b₁"> X₁ +
+            <input id="b2" type="number" step="any" placeholder="b₂"> X₂
+            <select id="op1">
+              <option value="<=">≤</option>
+              <option value="=">=</option>
+              <option value=">=">≥</option>
+            </select>
+            <input id="c1" type="number" step="any" placeholder="c₁">
+            <div class="error-message" id="contrainte1-error"></div>
+          </div>
+
+          <div class="ligne">
+            <input id="b3" type="number" step="any" placeholder="b₃"> X₁ +
+            <input id="b4" type="number" step="any" placeholder="b₄"> X₂
+            <select id="op2">
+              <option value="<=">≤</option>
+              <option value="=">=</option>
+              <option value=">=">≥</option>
+            </select>
+            <input id="c2" type="number" step="any" placeholder="c₂">
+            <div class="error-message" id="contrainte2-error"></div>
+          </div>
+
+          <p class="conditions">X₁, X₂ ≥ 0</p>
+        </div>
+        
+        <button type="submit">Continuer</button>
+      </form>
+
+      <script>
+        document.getElementById('fonctionForm').addEventListener('submit', function(e){
+          e.preventDefault();
+          // clear previous errors
+          const ids = ['objectif','a1','a2','b1','b2','c1','b3','b4','c2'];
+          ids.forEach(id=>{
+            const el = document.getElementById(id);
+            if(el) el.classList.remove('error');
+            const err = document.getElementById(id+'-error') || document.getElementById('fonction-error') || document.getElementById('contrainte1-error') || document.getElementById('contrainte2-error');
+            if(err) err.textContent = '';
+          });
+
+          let valid = true;
+          const objectif = document.getElementById('objectif');
+          if(!objectif.value){
+            document.getElementById('objectif-error').textContent = 'Choisissez Maximiser ou Minimiser.';
+            objectif.classList.add('error');
+            valid = false;
+          }
+
+          // au moins un coefficient de la fonction doit être renseigné
+          const a1 = document.getElementById('a1');
+          const a2 = document.getElementById('a2');
+          if((!a1.value && !a2.value) || (a1.value === '' && a2.value === '')){
+            document.getElementById('fonction-error').textContent = 'Renseignez au moins un coefficient pour la fonction.';
+            if(a1) a1.classList.add('error');
+            if(a2) a2.classList.add('error');
+            valid = false;
+          }
+
+          // vérifier contraintes : pour chaque contrainte, si tous les coeffs vides et c vide => ignorer, sinon c doit être renseigné
+          const checkConstraint = (bA, bB, cId, msgId) => {
+            const bbA = document.getElementById(bA);
+            const bbB = document.getElementById(bB);
+            const cc = document.getElementById(cId);
+            const errEl = document.getElementById(msgId);
+            if((!bbA.value && !bbB.value && !cc.value) || (bbA.value === '' && bbB.value === '' && cc.value === '')){
+              // aucun champ rempli -> considérer comme non fournie, OK
+              return true;
+            }
+            if(!cc.value){
+              if(errEl) errEl.textContent = 'Complétez le terme de droite de la contrainte.';
+              if(cc) cc.classList.add('error');
+              valid = false;
+              return false;
+            }
+            return true;
+          };
+
+          checkConstraint('b1','b2','c1','contrainte1-error');
+          checkConstraint('b3','b4','c2','contrainte2-error');
+
+          if(valid){
+            alert('Fonction enregistrée !');
+            // ici vous pouvez procéder à l'envoi réel ou à la redirection
+          }
+        });
+      </script>
+    </section>
+  </main>
+
+  <footer>
+    <p>© 2025 PHPSimplex </p>
+  </footer>
+</body>
+</html>

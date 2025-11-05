@@ -1,0 +1,130 @@
+/* Style global */
+body {
+  margin: 0;
+  font-family: 'Poppins', sans-serif;
+  background: linear-gradient(135deg, #74ABE2, #5563DE);
+  color: #fff;
+  height: 100vh;
+  display: flex;
+  flex-direction: column;
+}
+
+/* Barre de navigation */
+header {
+  background: rgba(0, 0, 0, 0.2);
+  backdrop-filter: blur(10px);
+  box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+}
+
+nav {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 15px 40px;
+}
+
+nav h1 {
+  font-size: 1.5em;
+  letter-spacing: 1px;
+  color: #fff;
+}
+
+nav ul {
+  list-style: none;
+  display: flex;
+  gap: 20px;
+}
+
+nav ul li a {
+  text-decoration: none;
+  color: #f8f8f8;
+  font-weight: 500;
+  transition: 0.3s;
+}
+
+nav ul li a:hover {
+  color: #FFD166;
+}
+
+/* Section principale */
+.container {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+}
+
+.container h2 {
+  font-size: 2em;
+  margin-bottom: 10px;
+}
+
+.container p {
+  margin-bottom: 30px;
+  font-size: 1.1em;
+}
+
+form {
+  background: rgba(255, 255, 255, 0.15);
+  padding: 30px;
+  border-radius: 15px;
+  backdrop-filter: blur(5px);
+  box-shadow: 0 4px 10px rgba(0,0,0,0.2);
+  display: flex;
+  flex-direction: column;
+  gap: 15px;
+  width: 300px;
+}
+
+label {
+  font-weight: 600;
+  text-align: left;
+}
+
+input, select {
+  padding: 10px;
+  border: none;
+  border-radius: 8px;
+  outline: none;
+}
+
+button {
+  margin-top: 10px;
+  padding: 10px;
+  border: none;
+  border-radius: 8px;
+  background-color: #FFD166;
+  color: #333;
+  font-weight: bold;
+  cursor: pointer;
+  transition: background 0.3s;
+}
+
+button:hover {
+  background-color: #FFB703;
+}
+
+/* Styles pour validation */
+.error {
+  box-shadow: 0 0 0 3px rgba(255, 77, 77, 0.12) inset;
+  border-radius: 8px;
+}
+
+.error-message {
+  color: #FF6B6B;
+  font-size: 0.9em;
+  margin-top: 4px;
+  text-align: left;
+}
+
+/* Pied de page */
+footer {
+  text-align: center;
+  padding: 10px;
+  font-size: 0.9em;
+  background: rgba(0, 0, 0, 0.15);
+  margin-top: auto;
+  width: 100%;
+}
