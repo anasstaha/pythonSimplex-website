@@ -1,0 +1,52 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>PHPSimplex</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='styles.css') }}">
+</head>
+<body>
+  <header>
+    <nav>
+      <h1>Simplex PHP</h1>
+      <ul>
+        <li><a href="#">Accueil</a></li>
+        <li><a href="#">Théorie</a></li>
+        <li><a href="#">Exemples</a></li>
+        <li><a href="#">Aide</a></li>
+        <li><a href="#">Quitter</a></li>
+      </ul>
+    </nav>
+  </header>
+
+  <main>
+    <section class="container">
+      <h2>Bienvenue dans PHPSimplex </h2>
+      <p>Saisissez les informations pour commencer votre résolution :</p>
+
+      <form method="get" action="{{ url_for('fonction') }}">
+        <label for="method">Méthode :</label>
+        <select id="method" name="method" required>
+          <option value="">--Choisir--</option>
+          <option value="grand_m">Méthode Grand M</option>
+          <option value="deux_phases">Méthode Deux Phases</option>
+        </select>
+
+        <label for="variables">Nombre de variables :</label>
+        <input type="number" id="variables" name="variables" min="1" required>
+
+        <label for="contraintes">Nombre de contraintes :</label>
+        <input type="number" id="contraintes" name="contraintes" min="1" required>
+
+        <button type="submit">Continuer</button>
+      </form>
+
+    </section>
+  </main>
+
+  <footer>
+    <p>© 2025 PHPSimplex</p>
+  </footer>
+</body>
+</html>

@@ -1,0 +1,60 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Fonction et Contraintes - Simplex Solver</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='styles.css') }}">
+  <link rel="stylesheet" href="{{ url_for('static', filename='fonction.css') }}">
+</head>
+<body>
+  <header>
+    <nav>
+      <h1>Simplex PHP</h1>
+      <ul>
+        <li><a href="#">Commencer</a></li>
+        <li><a href="http://w.phpsimplex.com/fr/theorie_methode_simplexe.htm">Théorie</a></li>
+        <li><a href="http://w.phpsimplex.com/fr/exemple_methode_simplexe.htm">Exemples</a></li>
+        <li><a href="#">Aide</a></li>
+        <li><a href="http://w.phpsimplex.com/fr/index.htm">Quitter</a></li>
+      </ul>
+    </nav>
+  </header>
+
+  <main>
+    <section class="container">
+      <h2>Définir la fonction et les contraintes</h2>
+      <p>Indiquez la fonction objectif et les contraintes de votre problème :</p>
+
+      {% if error %}
+        <div style="color: #FF6B6B; font-weight: bold; margin-bottom: 15px; background: rgba(255,107,107,0.1); padding: 10px; border-radius: 8px;">
+          ⚠️ {{ error }}
+        </div>
+      {% endif %}
+
+      <form method="post" action="{{ url_for('fonction') }}">
+        <label for="type">Quel est le but de la fonction ?</label>
+        <select id="type" name="type">
+          <option value="max" {% if method_selected=='max' %}selected{% endif %}>Maximiser</option>
+          <option value="min" {% if method_selected=='min' %}selected{% endif %}>Minimiser</option>
+        </select>
+
+        <label for="objective">Fonction Objectif (ex: 2x1 + 3x2 ou 0.5x1 - 0.2x2):</label>
+        <textarea id="objective" name="objective" rows="2" placeholder="Exemple: 2x1 + 3x2">{{ objective_text or '' }}</textarea>
+        <small style="color: #FFD166; font-size: 0.85em;">Format: coefficient + x + numéro. Ex: 2x1, 0.5x2, -x3</small>
+
+        <label for="constraints">Contraintes (une par ligne, ex: x1 + x2 <= 10):</label>
+        <textarea id="constraints" name="constraints" rows="6" placeholder="Exemple:&#10;x1 + x2 <= 10&#10;2x1 - x2 >= 5&#10;x1 + 2x2 = 8">{{ constraints_text or '' }}</textarea>
+        <small style="color: #FFD166; font-size: 0.85em;">Format: coefficients + opérateur (<=, >=, =) + nombre. Les variables sont automatiquement >= 0</small>
+
+        <button type="submit">Continuer</button>
+      </form>
+
+    </section>
+  </main>
+
+  <footer>
+    <p>© 2025 SimplexPHP</p>
+  </footer>
+</body>
+</html>

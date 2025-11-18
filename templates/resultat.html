@@ -1,0 +1,73 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Résultat du Simplexe</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='styles.css') }}">
+  <link rel="stylesheet" href="{{ url_for('static', filename='resultat.css') }}">
+</head>
+<body>
+  <header>
+    <nav>
+      <h1>Simplex PHP </h1>
+      <ul>
+        <li><a href="#">Accueil</a></li>
+        <li><a href="#">Théorie</a></li>
+        <li><a href="#">Exemples</a></li>
+        <li><a href="#">Aide</a></li>
+        <li><a href="#">Quitter</a></li>
+      </ul>
+    </nav>
+  </header>
+
+  <main>
+    <section class="container">
+      <h2>Résultat</h2>
+
+      {% if result and result.success %}
+        <div style="background: rgba(255,255,255,0.1); padding: 20px; border-radius: 15px; text-align: left; max-width: 700px; margin: 20px auto;">
+          
+          <h3 style="text-align: center; margin-bottom: 20px;">{{ result.objective_type }} : Z = {{ result.objective }} </h3>
+          
+          <div style="background: rgba(255,255,255,0.05); padding: 15px; border-radius: 10px; margin-bottom: 20px;">
+            <h4>Sous les contraintes :</h4>
+            <pre style="white-space: pre-wrap; word-wrap: break-word; font-size: 0.9em;">{{ result.constraints }}</pre>
+          </div>
+
+          <div style="background: rgba(255,166,0,0.1); padding: 15px; border-radius: 10px; margin-bottom: 20px; border-left: 4px solid #FFD166;">
+            <h4 style="margin-top: 0;">✓ Solution Optimale :</h4>
+            {% for i in range(result.variables|length) %}
+              <p style="margin: 5px 0;"><strong>{{ result.variables[i] }} = {{ result.values[i] }}</strong></p>
+            {% endfor %}
+            <hr style="border: none; border-top: 2px solid #FFD166; margin: 15px 0;">
+            <p style="font-size: 1.2em; margin: 10px 0;"><strong>Z = {{ result.Z }}</strong></p>
+          </div>
+
+          <div style="text-align: center;">
+            <a href="{{ url_for('index') }}" style="display: inline-block; margin-top: 20px; padding: 10px 20px; background-color: #FFD166; color: #333; border-radius: 10px; text-decoration: none; font-weight: bold; transition: background 0.3s;">
+              ← Retour à l'accueil
+            </a>
+          </div>
+        </div>
+
+      {% elif result %}
+        <div style="background: rgba(255,107,107,0.1); padding: 20px; border-radius: 15px; border-left: 4px solid #FF6B6B; max-width: 700px; margin: 20px auto;">
+          <h3 style="color: #FF6B6B;">❌ Erreur</h3>
+          <p>{{ result.message }}</p>
+          <a href="{{ url_for('index') }}" style="display: inline-block; margin-top: 10px; padding: 10px 20px; background-color: #FFD166; color: #333; border-radius: 10px; text-decoration: none; font-weight: bold;">
+            ← Retour à l'accueil
+          </a>
+        </div>
+
+      {% else %}
+        <p>Aucun résultat disponible.</p>
+      {% endif %}
+    </section>
+  </main>
+
+  <footer>
+    <p>© 2025 PHPSimplex </p>
+  </footer>
+</body>
+</html>

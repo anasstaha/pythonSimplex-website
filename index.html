@@ -3,19 +3,19 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>PHPSimplex</title>
-  <link rel="stylesheet" href="styles.css">
+  <title>Simplex Solver</title>
+  <link rel="stylesheet" href="static/styles.css">
 </head>
 <body>
   <header>
     <nav>
-      <h1>Simplex Solver</h1>
+      <h1>Simplex PHP </h1>
       <ul>
         <li><a href="#">Accueil</a></li>
-        <li><a href="#">Théorie</a></li>
-        <li><a href="#">Exemples</a></li>
+        <li><a href="http://w.phpsimplex.com/fr/theorie_methode_simplexe.htm#google_vignette" target="_blank">Théorie</a></li>
+        <li><a href="http://w.phpsimplex.com/fr/exemple_methode_simplexe.htm" target="_blank ">Exemples</a></li>
         <li><a href="#">Aide</a></li>
-        <li><a href="#">Quitter</a></li>
+        <li><a href="http://w.phpsimplex.com/fr/index.htm" target="_blank ">Quitter</a></li>
       </ul>
     </nav>
   </header>
@@ -24,77 +24,43 @@
     <section class="container">
       <h2>Bienvenue dans Simplex Solver</h2>
       <p>Saisissez les informations pour commencer votre résolution :</p>
-      <form id="mainForm" novalidate>
+      <form>
         <label for="method">Méthode :</label>
-        <select id="method" required>
-          <option value="">--Choisir--</option>
-          <option value="SimplexeModéfier(deuxphases)">Deux Phases</option>
-          <option value="Méthode du grandM">Méthode du grand M</option>
+        <select id="method">
+          <option value="Méthode du grand M">Méthode du grand M</option>
+          <option value="Méthode simplexe modéfier">simplexemodéfier(Deux Phases)</option>
         </select>
-        <div class="error-message" id="method-error"></div>
 
         <label for="variables">Nombre de variables :</label>
         <input type="number" id="variables" min="1" required>
-        <div class="error-message" id="variables-error"></div>
 
         <label for="contraintes">Nombre de contraintes :</label>
         <input type="number" id="contraintes" min="1" required>
-        <div class="error-message" id="contraintes-error"></div>
 
-        <button type="submit">Continuer</button>
+      <button type="button" onclick="window.location.href='fonction.html'">Continuer</button>
+       <button onclick="history.back()">back</button>
+
       </form>
-
-
-
-      <script>
-        document.getElementById('mainForm').addEventListener('submit', function(e){
-          e.preventDefault();
-          const method = document.getElementById('method');
-          const variables = document.getElementById('variables');
-          const contraintes = document.getElementById('contraintes');
-
-          let valid = true;
-          ['method','variables','contraintes'].forEach(id=>{
-            const el = document.getElementById(id);
-            const err = document.getElementById(id+'-error');
-            err.textContent = '';
-            el.classList.remove('error');
-          });
-
-          if(!method.value){
-            document.getElementById('method-error').textContent = 'Veuillez choisir une méthode.';
-            method.classList.add('error');
-            valid = false;
-          }
-          if(!variables.value || Number(variables.value) < 1){
-            document.getElementById('variables-error').textContent = 'Entrez un nombre de variables ≥ 1.';
-            variables.classList.add('error');
-            valid = false;
-          }
-          if(!contraintes.value || Number(contraintes.value) < 1){
-            document.getElementById('contraintes-error').textContent = 'Entrez un nombre de contraintes ≥ 1.';
-            contraintes.classList.add('error');
-            valid = false;
-          }
-
-          if(valid){
-            const params = new URLSearchParams({
-              method: method.value,
-              variables: variables.value,
-              contraintes: contraintes.value
-            });
-            // redirige vers fonction.html en passant les paramètres en query string
-            window.location.href = 'fonction.html?' + params.toString();
-          }
-        });
-
-
-      </script>
     </section>
   </main>
 
   <footer>
-    <p>© 2025 PHPSimplex </p>
+    <p>© 2025 SimplexPHP</p>
   </footer>
+
+    <script>
+    // Basic fallback validation for the static index page
+    const methodEl = document.getElementById('method');
+    const variablesEl = document.getElementById('variables');
+    const contraintesEl = document.getElementById('contraintes');
+
+    const continueBtn = document.querySelector('button[onclick*="fonction.html"]');
+    continueBtn.addEventListener('click', (e) => {
+      if (!methodEl.value || !variablesEl.value || !contraintesEl.value) {
+        alert('⚠️ Veuillez remplir tous les champs avant de continuer.');
+        e.preventDefault();
+      }
+    });
+    </script>
 </body>
 </html>

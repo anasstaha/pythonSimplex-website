@@ -66,7 +66,6 @@ nav ul li a:hover {
   font-size: 1.1em;
 }
 
-/* Formulaire */
 form {
   background: rgba(255, 255, 255, 0.15);
   padding: 30px;
@@ -76,49 +75,21 @@ form {
   display: flex;
   flex-direction: column;
   gap: 15px;
-  width: 340px;
+  width: 300px;
 }
 
 label {
   font-weight: 600;
   text-align: left;
-  display: block;
-  margin-bottom: 5px;
 }
 
 input, select {
-  padding: 8px;
+  padding: 10px;
   border: none;
   border-radius: 8px;
   outline: none;
 }
 
-input {
-  width: 60px;
-  text-align: center;
-}
-
-select {
-  background: #FFD166;
-  color: #333;
-  font-weight: bold;
-}
-
-/* Contraintes */
-.contraintes h3 {
-  margin-bottom: 10px;
-}
-
-.ligne {
-  margin-bottom: 10px;
-}
-
-.conditions {
-  margin-top: 10px;
-  font-weight: 500;
-}
-
-/* Bouton */
 button {
   margin-top: 10px;
   padding: 10px;
@@ -128,12 +99,11 @@ button {
   color: #333;
   font-weight: bold;
   cursor: pointer;
-  transition: background 0.3s, transform 0.2s;
+  transition: background 0.3s;
 }
 
 button:hover {
   background-color: #FFB703;
-  transform: scale(1.05);
 }
 
 /* Pied de page */
@@ -142,4 +112,94 @@ footer {
   padding: 10px;
   font-size: 0.9em;
   background: rgba(0, 0, 0, 0.15);
+}
+
+/* Section principale */
+.container {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+}
+
+.container h2 {
+  font-size: 2em;
+  margin-bottom: 10px;
+}
+
+.container p {
+  margin-bottom: 30px;
+  font-size: 1.1em;
+}
+
+form {
+  background: rgba(255, 255, 255, 0.15);
+  padding: 30px;
+  border-radius: 15px;
+  backdrop-filter: blur(5px);
+  box-shadow: 0 4px 10px rgba(0,0,0,0.2);
+  display: flex;
+  flex-direction: column;
+  gap: 15px;
+  width: 300px;
+}
+
+label {
+  font-weight: 600;
+  text-align: left;
+}
+
+input, select {
+  padding: 10px;
+  border: none;
+  border-radius: 8px;
+  outline: none;
+}
+
+button {
+  margin-top: 10px;
+  padding: 10px;
+  border: none;
+  border-radius: 8px;
+  background-color: #FFD166;
+  color: #333;
+  font-weight: bold;
+  cursor: pointer;
+  transition: background 0.3s;
+}
+
+button:hover {
+  background-color: #FFB703;
+}
+
+/* Styles pour validation */
+.error {
+  box-shadow: 0 0 0 3px rgba(255, 77, 77, 0.12) inset;
+  border-radius: 8px;
+}
+
+.error-message {
+  color: #FF6B6B;
+  font-size: 0.9em;
+  margin-top: 4px;
+  text-align: left;
+}
+
+/* Pied de page */
+footer {
+  text-align: center;
+  padding: 10px;
+  font-size: 0.9em;
+  background: rgba(0, 0, 0, 0.15);
+  margin-top: auto;
+  width: 100%;
+}
+
+.error {
+  color: #FFD166;
+  font-weight: bold;
+  font-size: 0.9em;
+  margin-top: -5px;
 }
