@@ -10,13 +10,12 @@
 <body>
   <header>
     <nav>
-      <h1>Simplex PHP</h1>
+      <h1>Simplex Solver</h1>
       <ul>
-        <li><a href="#">Commencer</a></li>
-        <li><a href="http://w.phpsimplex.com/fr/theorie_methode_simplexe.htm">Théorie</a></li>
-        <li><a href="http://w.phpsimplex.com/fr/exemple_methode_simplexe.htm">Exemples</a></li>
+        <li><a href="/">Accueil</a></li>
+        <li><a href="http://w.phpsimplex.com/fr/theorie_methode_simplexe.htm" target="_blank">Théorie</a></li>
+        <li><a href="http://w.phpsimplex.com/fr/exemple_methode_simplexe.htm" target="_blank">Exemples</a></li>
         <li><a href="#">Aide</a></li>
-        <li><a href="http://w.phpsimplex.com/fr/index.htm">Quitter</a></li>
       </ul>
     </nav>
   </header>
@@ -26,35 +25,189 @@
       <h2>Définir la fonction et les contraintes</h2>
       <p>Indiquez la fonction objectif et les contraintes de votre problème :</p>
 
-      {% if error %}
-        <div style="color: #FF6B6B; font-weight: bold; margin-bottom: 15px; background: rgba(255,107,107,0.1); padding: 10px; border-radius: 8px;">
-          ⚠️ {{ error }}
-        </div>
-      {% endif %}
+      <div id="method-info" style="background: #E8F4F8; padding: 10px; margin-bottom: 20px; border-radius: 8px;">
+        Méthode: <strong id="method-name"></strong>
+      </div>
 
-      <form method="post" action="{{ url_for('fonction') }}">
-        <label for="type">Quel est le but de la fonction ?</label>
-        <select id="type" name="type">
-          <option value="max" {% if method_selected=='max' %}selected{% endif %}>Maximiser</option>
-          <option value="min" {% if method_selected=='min' %}selected{% endif %}>Minimiser</option>
+      <form id="simplexForm">
+        <label for="objective-type">Quel est le but de la fonction ?</label>
+        <select id="objective-type" required>
+          <option value="max">Maximiser</option>
+          <option value="min">Minimiser</option>
         </select>
 
-        <label for="objective">Fonction Objectif (ex: 2x1 + 3x2 ou 0.5x1 - 0.2x2):</label>
-        <textarea id="objective" name="objective" rows="2" placeholder="Exemple: 2x1 + 3x2">{{ objective_text or '' }}</textarea>
-        <small style="color: #FFD166; font-size: 0.85em;">Format: coefficient + x + numéro. Ex: 2x1, 0.5x2, -x3</small>
+        <label for="objective">Fonction Objectif</label>
+        <div class="input-group">
+          <span>Z = </span>
+          <div id="objective-inputs" class="coefficient-inputs"></div>
+        </div>
+        <small style="color: #666; font-size: 0.85em;">Saisissez les coefficients pour chaque variable</small>
 
-        <label for="constraints">Contraintes (une par ligne, ex: x1 + x2 <= 10):</label>
-        <textarea id="constraints" name="constraints" rows="6" placeholder="Exemple:&#10;x1 + x2 <= 10&#10;2x1 - x2 >= 5&#10;x1 + 2x2 = 8">{{ constraints_text or '' }}</textarea>
-        <small style="color: #FFD166; font-size: 0.85em;">Format: coefficients + opérateur (<=, >=, =) + nombre. Les variables sont automatiquement >= 0</small>
+        <hr>
 
-        <button type="submit">Continuer</button>
+        <label>Contraintes</label>
+        <div id="constraints-container"></div>
+
+        <button type="button" id="add-constraint" class="btn-secondary">+ Ajouter une contrainte</button>
+        <button type="submit" class="btn-primary">Résoudre</button>
+        <button type="button" onclick="window.location.href='/'" class="btn-secondary">Annuler</button>
       </form>
 
+      <div id="loading" style="display: none; text-align: center; margin: 20px 0;">
+        <p>Calcul en cours...</p>
+      </div>
     </section>
   </main>
 
   <footer>
-    <p>© 2025 SimplexPHP</p>
+    <p>© 2025 Simplex Solver</p>
   </footer>
+
+  <script>
+    const urlParams = new URLSearchParams(window.location.search);
+    const nVars = parseInt(urlParams.get('variables')) || 2;
+    const nConstraints = parseInt(urlParams.get('contraintes')) || 2;
+    const method = urlParams.get('method') || 'big_m';
+
+    document.getElementById('method-name').textContent = 
+      method === 'big_m' ? 'Méthode du Grand M' : 'Simplexe Deux Phases';
+
+    // Initialiser les inputs pour la fonction objectif
+    function initObjective() {
+      const container = document.getElementById('objective-inputs');
+      container.innerHTML = '';
+      for (let i = 0; i < nVars; i++) {
+        const input = document.createElement('input');
+        input.type = 'number';
+        input.step = 'any';
+        input.placeholder = `x${i+1}`;
+        input.className = 'coeff-input';
+        input.value = i === 0 ? '1' : '0';
+        
+        const label = document.createElement('label');
+        label.style.fontSize = '0.9em';
+        label.textContent = `x${i+1}`;
+        
+        const wrapper = document.createElement('div');
+        wrapper.className = 'coeff-group';
+        wrapper.appendChild(input);
+        wrapper.appendChild(label);
+        
+        container.appendChild(wrapper);
+      }
+    }
+
+    // Initialiser les contraintes
+    function initConstraints() {
+      const container = document.getElementById('constraints-container');
+      container.innerHTML = '';
+      for (let i = 0; i < nConstraints; i++) {
+        addConstraint(i);
+      }
+    }
+
+    function addConstraint(index = null) {
+      const container = document.getElementById('constraints-container');
+      const constraintDiv = document.createElement('div');
+      constraintDiv.className = 'constraint-row';
+      
+      let html = '<div class="constraint-inputs">';
+      for (let i = 0; i < nVars; i++) {
+        html += `
+          <div class="coeff-group">
+            <input type="number" step="any" placeholder="0" class="constraint-coeff" data-var="${i}">
+            <label>x${i+1}</label>
+          </div>
+        `;
+      }
+      
+      html += `
+        </div>
+        <div class="constraint-operator">
+          <select class="constraint-sign">
+            <option value="<=">≤</option>
+            <option value=">=">≥</option>
+            <option value="=">＝</option>
+          </select>
+        </div>
+        <div class="constraint-value">
+          <input type="number" step="any" placeholder="0" class="constraint-rhs">
+        </div>
+        <button type="button" class="btn-remove" onclick="this.parentElement.remove()">✕</button>
+      `;
+      
+      constraintDiv.innerHTML = html;
+      container.appendChild(constraintDiv);
+    }
+
+    document.getElementById('add-constraint').addEventListener('click', addConstraint);
+
+    // Soumettre le formulaire
+    document.getElementById('simplexForm').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      
+      // Récupérer les données
+      const objectiveType = document.getElementById('objective-type').value;
+      const objectiveCoeffs = Array.from(document.querySelectorAll('#objective-inputs input'))
+        .map(input => parseFloat(input.value) || 0);
+      
+      // Les coefficients sont envoyés tels quels, le serveur gère la minimisation/maximisation
+      const c = objectiveCoeffs;
+      
+      const constraintRows = document.querySelectorAll('.constraint-row');
+      const A = [];
+      const b = [];
+      const signs = [];
+      
+      constraintRows.forEach(row => {
+        const coeffs = Array.from(row.querySelectorAll('.constraint-coeff'))
+          .map(input => parseFloat(input.value) || 0);
+        const sign = row.querySelector('.constraint-sign').value;
+        const rhs = parseFloat(row.querySelector('.constraint-rhs').value) || 0;
+        
+        A.push(coeffs);
+        signs.push(sign);
+        b.push(rhs);
+      });
+      
+      // Envoyer au serveur
+      document.getElementById('loading').style.display = 'block';
+      
+      try {
+        const response = await fetch('/solve', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({
+            method: method,
+            objective_type: objectiveType,
+            c: c,
+            A: A,
+            b: b,
+            signs: signs
+          })
+        });
+        
+        const result = await response.json();
+        
+        if (result.success) {
+          // Rediriger vers la page de résultats
+          sessionStorage.setItem('simplexResult', JSON.stringify(result));
+          window.location.href = '/resultat';
+        } else {
+          alert('Erreur: ' + result.message);
+        }
+      } catch (error) {
+        alert('Erreur de communication: ' + error.message);
+      } finally {
+        document.getElementById('loading').style.display = 'none';
+      }
+    });
+
+    // Initialiser
+    initObjective();
+    initConstraints();
+  </script>
 </body>
 </html>

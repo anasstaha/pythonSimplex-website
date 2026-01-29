@@ -4,7 +4,7 @@ body {
   font-family: 'Poppins', sans-serif;
   background: linear-gradient(135deg, #74ABE2, #5563DE);
   color: #fff;
-  height: 100vh;
+  min-height: 100vh;
   display: flex;
   flex-direction: column;
 }
@@ -49,11 +49,11 @@ nav ul li a:hover {
 /* Section principale */
 .container {
   flex: 1;
+  padding: 40px 20px;
+  overflow-y: auto;
   display: flex;
   flex-direction: column;
   align-items: center;
-  justify-content: center;
-  text-align: center;
 }
 
 .container h2 {
@@ -76,26 +76,182 @@ form {
   display: flex;
   flex-direction: column;
   gap: 15px;
-  width: 340px;
+  width: 100%;
+  max-width: 800px;
 }
 
 label {
   font-weight: 600;
   text-align: left;
   display: block;
-  margin-bottom: 5px;
+  margin-bottom: 8px;
 }
 
 input, select {
-  padding: 8px;
+  padding: 10px;
   border: none;
   border-radius: 8px;
   outline: none;
 }
 
-input {
-  width: 60px;
+select {
+  width: 100%;
+}
+
+/* Conteneur pour inputs coefficients */
+.input-group {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 15px;
+}
+
+.input-group span {
+  font-weight: bold;
+  font-size: 1.1em;
+}
+
+.coefficient-inputs {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(80px, 1fr));
+  gap: 10px;
+  width: 100%;
+}
+
+.coeff-group {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 5px;
+}
+
+.coeff-input {
+  width: 100%;
   text-align: center;
+  padding: 10px;
+  border: none;
+  border-radius: 8px;
+}
+
+.coeff-input:focus {
+  background-color: #FFD166;
+  color: #333;
+}
+
+/* Contraintes */
+.constraint-row {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  padding: 10px;
+  background: rgba(255, 255, 255, 0.08);
+  border-radius: 8px;
+  margin-bottom: 10px;
+}
+
+.constraint-inputs {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(70px, 1fr));
+  gap: 8px;
+  flex: 1;
+}
+
+.constraint-coeff {
+  width: 100%;
+  text-align: center;
+  padding: 8px;
+  border: none;
+  border-radius: 6px;
+  font-size: 0.9em;
+}
+
+.constraint-operator {
+  min-width: 60px;
+}
+
+.constraint-sign {
+  width: 100%;
+  padding: 8px;
+  border: none;
+  border-radius: 6px;
+}
+
+.constraint-value {
+  min-width: 100px;
+}
+
+.constraint-rhs {
+  width: 100%;
+  padding: 8px;
+  border: none;
+  border-radius: 6px;
+  text-align: center;
+}
+
+.btn-remove {
+  padding: 8px 12px;
+  background-color: #FF6B6B;
+  color: #fff;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  font-weight: bold;
+  transition: background 0.3s;
+}
+
+.btn-remove:hover {
+  background-color: #FF5252;
+}
+
+/* Boutons */
+.btn-primary,
+.btn-secondary {
+  padding: 12px 20px;
+  border: none;
+  border-radius: 8px;
+  font-weight: bold;
+  cursor: pointer;
+  transition: background 0.3s;
+  font-size: 1em;
+}
+
+.btn-primary {
+  background-color: #FFD166;
+  color: #333;
+  width: 100%;
+  margin-top: 10px;
+}
+
+.btn-primary:hover {
+  background-color: #FFB703;
+}
+
+.btn-secondary {
+  background-color: #64C8C8;
+  color: #fff;
+  width: auto;
+  margin-top: 10px;
+}
+
+.btn-secondary:hover {
+  background-color: #4AA8A8;
+}
+
+/* Ligne HR */
+hr {
+  border: none;
+  border-top: 1px solid rgba(255, 255, 255, 0.2);
+  margin: 20px 0;
+}
+
+/* Pied de page */
+footer {
+  text-align: center;
+  padding: 10px;
+  font-size: 0.9em;
+  background: rgba(0, 0, 0, 0.15);
+  margin-top: auto;
+  width: 100%;
 }
 
 select {

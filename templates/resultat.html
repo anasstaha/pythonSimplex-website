@@ -10,13 +10,12 @@
 <body>
   <header>
     <nav>
-      <h1>Simplex PHP </h1>
+      <h1>Simplex Solver</h1>
       <ul>
-        <li><a href="#">Accueil</a></li>
-        <li><a href="#">Théorie</a></li>
-        <li><a href="#">Exemples</a></li>
+        <li><a href="/">Accueil</a></li>
+        <li><a href="http://w.phpsimplex.com/fr/theorie_methode_simplexe.htm" target="_blank">Théorie</a></li>
+        <li><a href="http://w.phpsimplex.com/fr/exemple_methode_simplexe.htm" target="_blank">Exemples</a></li>
         <li><a href="#">Aide</a></li>
-        <li><a href="#">Quitter</a></li>
       </ul>
     </nav>
   </header>
@@ -25,49 +24,102 @@
     <section class="container">
       <h2>Résultat</h2>
 
-      {% if result and result.success %}
-        <div style="background: rgba(255,255,255,0.1); padding: 20px; border-radius: 15px; text-align: left; max-width: 700px; margin: 20px auto;">
-          
-          <h3 style="text-align: center; margin-bottom: 20px;">{{ result.objective_type }} : Z = {{ result.objective }} </h3>
-          
-          <div style="background: rgba(255,255,255,0.05); padding: 15px; border-radius: 10px; margin-bottom: 20px;">
-            <h4>Sous les contraintes :</h4>
-            <pre style="white-space: pre-wrap; word-wrap: break-word; font-size: 0.9em;">{{ result.constraints }}</pre>
-          </div>
-
-          <div style="background: rgba(255,166,0,0.1); padding: 15px; border-radius: 10px; margin-bottom: 20px; border-left: 4px solid #FFD166;">
-            <h4 style="margin-top: 0;">✓ Solution Optimale :</h4>
-            {% for i in range(result.variables|length) %}
-              <p style="margin: 5px 0;"><strong>{{ result.variables[i] }} = {{ result.values[i] }}</strong></p>
-            {% endfor %}
-            <hr style="border: none; border-top: 2px solid #FFD166; margin: 15px 0;">
-            <p style="font-size: 1.2em; margin: 10px 0;"><strong>Z = {{ result.Z }}</strong></p>
-          </div>
-
-          <div style="text-align: center;">
-            <a href="{{ url_for('index') }}" style="display: inline-block; margin-top: 20px; padding: 10px 20px; background-color: #FFD166; color: #333; border-radius: 10px; text-decoration: none; font-weight: bold; transition: background 0.3s;">
-              ← Retour à l'accueil
-            </a>
-          </div>
+      <div id="result-container" style="background: rgba(255,255,255,0.1); padding: 20px; border-radius: 15px; text-align: left; max-width: 700px; margin: 20px auto;">
+        <h3 id="result-title" style="text-align: center; margin-bottom: 20px;"></h3>
+        
+        <div style="background: rgba(255,166,0,0.1); padding: 15px; border-radius: 10px; margin-bottom: 20px; border-left: 4px solid #FFD166;">
+          <h4 style="margin-top: 0;">✓ Solution Optimale :</h4>
+          <div id="solution-variables" style="margin-bottom: 15px;"></div>
+          <hr style="border: none; border-top: 2px solid #FFD166; margin: 15px 0;">
+          <p style="font-size: 1.2em; margin: 10px 0;"><strong>Z = <span id="optimal-value">0</span></strong></p>
         </div>
 
-      {% elif result %}
-        <div style="background: rgba(255,107,107,0.1); padding: 20px; border-radius: 15px; border-left: 4px solid #FF6B6B; max-width: 700px; margin: 20px auto;">
-          <h3 style="color: #FF6B6B;">❌ Erreur</h3>
-          <p>{{ result.message }}</p>
-          <a href="{{ url_for('index') }}" style="display: inline-block; margin-top: 10px; padding: 10px 20px; background-color: #FFD166; color: #333; border-radius: 10px; text-decoration: none; font-weight: bold;">
+        <div style="background: rgba(100,200,200,0.1); padding: 15px; border-radius: 10px; margin-bottom: 20px; border-left: 4px solid #64C8C8;">
+          <h4 style="margin-top: 0;">ℹ Information :</h4>
+          <p><strong>Méthode :</strong> <span id="method-used"></span></p>
+          <p><strong>Itérations :</strong> <span id="iterations-count">0</span></p>
+        </div>
+
+        <div style="text-align: center;">
+          <button onclick="window.location.href='/'" style="display: inline-block; margin-top: 20px; padding: 10px 20px; background-color: #FFD166; color: #333; border-radius: 10px; text-decoration: none; font-weight: bold; cursor: pointer; border: none; transition: background 0.3s;">
             ← Retour à l'accueil
-          </a>
+          </button>
+          <button onclick="printResult()" style="display: inline-block; margin-top: 20px; margin-left: 10px; padding: 10px 20px; background-color: #64C8C8; color: #fff; border-radius: 10px; cursor: pointer; border: none; transition: background 0.3s;">
+            📋 Imprimer
+          </button>
         </div>
+      </div>
 
-      {% else %}
-        <p>Aucun résultat disponible.</p>
-      {% endif %}
+      <div id="error-container" style="display: none; background: rgba(255,107,107,0.2); padding: 20px; border-radius: 15px; text-align: center; max-width: 700px; margin: 20px auto; border-left: 4px solid #FF6B6B;">
+        <h3 style="color: #FF6B6B;">Erreur</h3>
+        <p id="error-message"></p>
+        <button onclick="window.location.href='/'" style="padding: 10px 20px; background-color: #FF6B6B; color: #fff; border: none; border-radius: 8px; cursor: pointer; margin-top: 15px;">
+          Retour à l'accueil
+        </button>
+      </div>
     </section>
   </main>
 
   <footer>
-    <p>© 2025 PHPSimplex </p>
+    <p>© 2025 Simplex Solver</p>
+  </footer>
+
+  <script>
+    // Récupérer le résultat depuis sessionStorage
+    const resultData = sessionStorage.getItem('simplexResult');
+    
+    if (!resultData) {
+      showError('Aucun résultat trouvé. Veuillez résoudre un problème d\'abord.');
+    } else {
+      const result = JSON.parse(resultData);
+      
+      if (result.success) {
+        displayResult(result);
+      } else {
+        showError(result.message || 'Une erreur est survenue lors de la résolution.');
+      }
+    }
+
+    function displayResult(result) {
+      const nVars = result.solution.length;
+      
+      // Afficher le titre
+      document.getElementById('result-title').textContent = 'Solution Optimale Trouvée';
+      
+      // Afficher les variables
+      const solutionDiv = document.getElementById('solution-variables');
+      result.solution.forEach((value, i) => {
+        const p = document.createElement('p');
+        p.style.margin = '5px 0';
+        p.innerHTML = `<strong>x${i+1} = ${value.toFixed(6)}</strong>`;
+        solutionDiv.appendChild(p);
+      });
+      
+      // Afficher la valeur optimale
+      document.getElementById('optimal-value').textContent = result.optimal_value.toFixed(6);
+      
+      // Afficher les informations
+      document.getElementById('method-used').textContent = result.method || 'Simplex';
+      document.getElementById('iterations-count').textContent = result.iterations || 0;
+      
+      // Masquer la section erreur
+      document.getElementById('error-container').style.display = 'none';
+      document.getElementById('result-container').style.display = 'block';
+    }
+
+    function showError(message) {
+      document.getElementById('result-container').style.display = 'none';
+      document.getElementById('error-container').style.display = 'block';
+      document.getElementById('error-message').textContent = message;
+    }
+
+    function printResult() {
+      window.print();
+    }
+  </script>
+
+  <footer>
+    <p>© 2025 Simplex Solver</p>
   </footer>
 </body>
 </html>

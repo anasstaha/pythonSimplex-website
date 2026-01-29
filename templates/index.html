@@ -9,28 +9,27 @@
 <body>
   <header>
     <nav>
-      <h1>Simplex PHP</h1>
+      <h1>Simplex Solver</h1>
       <ul>
-        <li><a href="#">Accueil</a></li>
-        <li><a href="#">Théorie</a></li>
-        <li><a href="#">Exemples</a></li>
+        <li><a href="/">Accueil</a></li>
+        <li><a href="http://w.phpsimplex.com/fr/theorie_methode_simplexe.htm" target="_blank">Théorie</a></li>
+        <li><a href="http://w.phpsimplex.com/fr/exemple_methode_simplexe.htm" target="_blank">Exemples</a></li>
         <li><a href="#">Aide</a></li>
-        <li><a href="#">Quitter</a></li>
       </ul>
     </nav>
   </header>
 
   <main>
     <section class="container">
-      <h2>Bienvenue dans PHPSimplex </h2>
+      <h2>Bienvenue dans Simplex Solver</h2>
       <p>Saisissez les informations pour commencer votre résolution :</p>
 
       <form method="get" action="{{ url_for('fonction') }}">
         <label for="method">Méthode :</label>
         <select id="method" name="method" required>
           <option value="">--Choisir--</option>
-          <option value="grand_m">Méthode Grand M</option>
-          <option value="deux_phases">Méthode Deux Phases</option>
+          <option value="big_m">Méthode du Grand M</option>
+          <option value="two_phase">Simplexe Deux Phases</option>
         </select>
 
         <label for="variables">Nombre de variables :</label>
@@ -46,7 +45,9 @@
   </main>
 
   <footer>
-    <p>© 2025 PHPSimplex</p>
+    <p>© 2025 Simplex Solver</p>
   </footer>
+</body>
+</html>
 </body>
 </html>

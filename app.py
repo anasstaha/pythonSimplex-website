@@ -1,73 +1,276 @@
-from flask import Flask, request, render_template
-import re
-from scipy.optimize import linprog
+from flask import Flask, render_template, request, jsonify
+import numpy as np
+from copy import deepcopy
 
 app = Flask(__name__)
 
-
-# --- Parser simple pour fonction objectif (ex: 0.2x1 + 0.1x2 - 3x3) ---
-def parse_objective(text):
-    if not text:
-        return []
-    s = text.replace('−', '-').replace(' ', '')
-    pattern = re.compile(r'([+-]?\d*\.?\d*)(?:\s*)x(\d+)', flags=re.IGNORECASE)
-    coeffs = {}
-    for m in pattern.finditer(s):
-        coef_str = m.group(1)
-        idx = int(m.group(2))
-        if coef_str in ('', '+'):
-            coef = 1.0
-        elif coef_str == '-':
-            coef = -1.0
-        else:
-            coef = float(coef_str)
-        coeffs[idx] = coef
-    # convert dict to list ordered by index
-    if not coeffs:
-        return []
-    max_idx = max(coeffs.keys())
-    return [coeffs.get(i, 0.0) for i in range(1, max_idx + 1)]
-
-
-def parse_constraints(text):
-    lines = [ln.strip() for ln in text.strip().splitlines() if ln.strip()]
-    parsed = []
-    pattern = re.compile(r'([+-]?\d*\.?\d*)x(\d+)', flags=re.IGNORECASE)
-    for ln in lines:
-        if '<=' in ln:
-            left, right = ln.split('<=', 1)
-            sense = '<='
-        elif '>=' in ln:
-            left, right = ln.split('>=', 1)
-            sense = '>='
-        elif '=' in ln:
-            left, right = ln.split('=', 1)
-            sense = '='
-        else:
-            continue
-        s = left.replace(' ', '').replace('−', '-')
-        coeffs = {}
-        for m in pattern.finditer(s):
-            coef_str = m.group(1)
-            idx = int(m.group(2))
-            if coef_str in ('', '+'):
-                coef = 1.0
-            elif coef_str == '-':
-                coef = -1.0
-            else:
-                coef = float(coef_str)
-            coeffs[idx] = coef
-        try:
-            rhs = float(right.strip())
-        except:
-            rhs = None
+class SimplexSolver:
+    """Classe pour résoudre les problèmes de programmation linéaire avec le simplexe"""
+    
+    def __init__(self, c, A, b, signs, method='big_m', is_maximization=True):
+        self.c = np.array(c, dtype=float)
+        self.A = np.array(A, dtype=float)
+        self.b = np.array(b, dtype=float)
+        self.signs = signs
+        self.method = method
+        self.is_maximization = is_maximization
+        self.n_vars = len(c)
+        self.n_constraints = len(b)
+        self.iterations = []
+        self.artificial_vars = []
+        self.slack_vars = []
+        self.tableau_history = []
         
-        # Validate constraint
-        if not coeffs or rhs is None:
-            parsed.append({'coeffs': coeffs, 'sense': sense, 'rhs': rhs, 'raw': ln, 'valid': False})
+    def convert_to_standard_form(self):
+        """
+        Convertir le problème à la forme standard.
+        
+        Stratégie:
+        - Pour <=: ajouter slack positive s >= 0
+        - Pour >=: ajouter slack négative -s et variable artificielle a
+        - Pour =: ajouter variable artificielle a
+        """
+        n_slack = sum(1 for sign in self.signs if sign in ['<=', '>='])
+        n_artificial = sum(1 for sign in self.signs if sign in ['>=', '='])
+        
+        A_std = []
+        self.slack_vars = []
+        self.artificial_vars = []
+        slack_count = 0
+        artificial_count = 0
+        
+        for i, sign in enumerate(self.signs):
+            row = list(self.A[i])
+            
+            if sign == '<=':
+                # x1 + x2 <= 4 devient x1 + x2 + s1 = 4
+                for j in range(n_slack):
+                    if j == slack_count:
+                        row.append(1)
+                    else:
+                        row.append(0)
+                slack_count += 1
+                for j in range(n_artificial):
+                    row.append(0)
+                self.slack_vars.append(self.n_vars + slack_count - 1)
+                
+            elif sign == '>=':
+                # x1 + x2 >= 4 devient x1 + x2 - s1 + a1 = 4
+                # Slack s1 est négative initalement (s1 = 0 => x1 + x2 = 4, mais on veut >= 4)
+                # Donc on ajoute une variable artificielle a1 pour la base initiale
+                for j in range(n_slack):
+                    if j == slack_count:
+                        row.append(-1)
+                    else:
+                        row.append(0)
+                slack_count += 1
+                self.slack_vars.append(self.n_vars + slack_count - 1)
+                
+                # Ajouter variable artificielle
+                for j in range(n_artificial):
+                    if j == artificial_count:
+                        row.append(1)
+                    else:
+                        row.append(0)
+                artificial_count += 1
+                self.artificial_vars.append(self.n_vars + n_slack + artificial_count - 1)
+                
+            elif sign == '=':
+                # x1 + x2 = 3 reste x1 + x2 = 3
+                # Pas de slack, seulement variable artificielle
+                for j in range(n_slack):
+                    row.append(0)
+                    
+                for j in range(n_artificial):
+                    if j == artificial_count:
+                        row.append(1)
+                    else:
+                        row.append(0)
+                artificial_count += 1
+                self.artificial_vars.append(self.n_vars + n_slack + artificial_count - 1)
+            
+            A_std.append(row)
+        
+        return np.array(A_std, dtype=float), self.b.copy()
+    
+    def solve_big_m(self):
+        """
+        Méthode du Grand M.
+        
+        Approche: Utiliser la méthode à deux phases
+        - Phase 1: Minimiser la somme des variables artificielles
+        - Phase 2: Minimiser/Maximiser l'objectif réel
+        
+        Cela évite les problèmes numériques avec M très grande.
+        """
+        return self.solve_two_phase()
+    
+    def solve_two_phase(self):
+        """Méthode à deux phases"""
+        A_std, b_std = self.convert_to_standard_form()
+        n_cols = A_std.shape[1]
+        
+        # Phase 1 : Minimiser la somme des variables artificielles
+        if self.artificial_vars:
+            # Créer la fonction objectif pour la phase 1
+            c_phase1 = [0] * n_cols
+            for idx in self.artificial_vars:
+                c_phase1[idx] = 1
+            c_phase1 = np.array(c_phase1, dtype=float)
+            
+            tableau = self._create_tableau(A_std, b_std, c_phase1)
+            result1, tableau_phase1 = self._solve_tableau(deepcopy(tableau), "Phase 1 - Minimiser variables artificielles")
+            
+            # Vérifier si une solution de base réalisable existe
+            optimal_value_phase1 = float(result1.get('optimal_value', 0))
+            if optimal_value_phase1 > 1e-6:
+                return {
+                    'success': False,
+                    'message': f'Aucune solution réalisable trouvée. Somme des variables artificielles = {optimal_value_phase1:.6f}'
+                }
+            
+            # Phase 2 : Résoudre le problème original
+            c_phase2 = np.concatenate([self.c, np.zeros(n_cols - self.n_vars)])
+            
+            # Utiliser le tableau final de la phase 1 comme base pour la phase 2
+            tableau_phase2 = deepcopy(tableau_phase1)
+            # Remplacer la ligne de la fonction objectif par celle de la phase 2
+            tableau_phase2[-1, :-1] = -c_phase2
+            tableau_phase2[-1, -1] = 0
+            
+            # Adapter le tableau pour la phase 2 (éliminer les variables artificielles)
+            result2, final_tableau = self._solve_tableau(tableau_phase2, "Phase 2 - Résoudre le problème original")
+            
+            if result2.get('success'):
+                solution = self._extract_solution(final_tableau)
+                    
+                return {
+                    'success': True,
+                    'solution': solution.tolist(),
+                    'optimal_value': float(result2.get('optimal_value', 0)),
+                    'iterations': len(self.iterations),
+                    'method': 'Deux Phases',
+                    'message': 'Solution optimale trouvée'
+                }
+            return result2
         else:
-            parsed.append({'coeffs': coeffs, 'sense': sense, 'rhs': rhs, 'raw': ln, 'valid': True})
-    return parsed
+            # Pas de variables artificielles, résoudre directement
+            c_std = np.concatenate([self.c, np.zeros(A_std.shape[1] - self.n_vars)])
+            tableau = self._create_tableau(A_std, b_std, c_std)
+            result, final_tableau = self._solve_tableau(tableau, "Phase 1 - Unique")
+            
+            if result.get('success'):
+                solution = self._extract_solution(final_tableau)
+                    
+                return {
+                    'success': True,
+                    'solution': solution.tolist(),
+                    'optimal_value': float(result.get('optimal_value', 0)),
+                    'iterations': len(self.iterations),
+                    'method': 'Deux Phases',
+                    'message': 'Solution optimale trouvée'
+                }
+            return result
+    
+    def _create_tableau(self, A, b, c):
+        """Créer le tableau du simplexe initial"""
+        m, n = A.shape
+        tableau = np.zeros((m + 1, n + 1), dtype=float)
+        tableau[:m, :n] = A
+        tableau[:m, n] = b
+        tableau[m, :n] = -c
+        tableau[m, n] = 0
+        return tableau
+    
+    def _solve_tableau(self, tableau, phase_name):
+        """Résoudre le tableau du simplexe"""
+        iteration = 0
+        max_iterations = 1000
+        epsilon = 1e-10
+        
+        while iteration < max_iterations:
+            # Sauvegarder l'itération
+            self.tableau_history.append({
+                'iteration': iteration,
+                'phase': phase_name,
+                'tableau': tableau.copy()
+            })
+            self.iterations.append(iteration)
+            
+            # Vérifier l'optimalité (tous les coefficients de la ligne de Z >= 0)
+            last_row = tableau[-1, :-1]
+            if np.all(last_row >= -epsilon):
+                # Solution optimale trouvée
+                solution = self._extract_solution(tableau)
+                optimal_value = -tableau[-1, -1]
+                
+                return {
+                    'success': True,
+                    'solution': solution,
+                    'optimal_value': optimal_value,
+                    'iterations': iteration,
+                    'message': 'Solution optimale trouvée'
+                }, tableau
+            
+            # Choisir la colonne du pivot (le coefficient le plus négatif)
+            pivot_col = np.argmin(last_row)
+            
+            # Choisir la ligne du pivot avec le test du rapport minimum
+            col = tableau[:-1, pivot_col]
+            min_ratio = float('inf')
+            pivot_row = -1
+            
+            # IMPORTANT: Le test du rapport minimum DOIT utiliser seulement des coefficients positifs
+            # Sinon, pivoter sur un coefficient négatif rendrait le RHS négatif (infaisable)
+            for i in range(len(col)):
+                if col[i] > epsilon:  # Seulement coefficients POSITIFS
+                    ratio = tableau[i, -1] / col[i]
+                    if ratio >= -epsilon:  # Ratio non-négatif (peut être zéro pour dégénérescence)
+                        if ratio < min_ratio:
+                            min_ratio = ratio
+                            pivot_row = i
+            
+            # Vérifier si le problème est non borné
+            if pivot_row == -1:
+                # Aucun coefficient positif -> la variable peut augmenter indéfiniment
+                return {
+                    'success': False,
+                    'message': 'Le problème est non borné'
+                }, tableau
+            
+            # Effectuer le pivot (Gauss-Jordan)
+            pivot_value = tableau[pivot_row, pivot_col]
+            tableau[pivot_row, :] /= pivot_value
+            
+            for i in range(tableau.shape[0]):
+                if i != pivot_row:
+                    factor = tableau[i, pivot_col]
+                    tableau[i, :] -= factor * tableau[pivot_row, :]
+            
+            iteration += 1
+        
+        return {
+            'success': False,
+            'message': f'Nombre maximum d\'itérations ({max_iterations}) atteint'
+        }, tableau
+    
+    def _extract_solution(self, tableau):
+        """Extraire la solution du tableau final"""
+        m, n = tableau.shape
+        m -= 1  # Enlever la ligne de la fonction objectif
+        solution = np.zeros(self.n_vars, dtype=float)
+        
+        # Identifier les variables de base
+        for j in range(self.n_vars):
+            col = tableau[:m, j]
+            # Une variable de base a exactement un 1 et des 0 dans sa colonne
+            if np.count_nonzero(col) == 1:
+                i = np.where(col != 0)[0][0]
+                if abs(col[i] - 1.0) < 1e-10:
+                    solution[j] = tableau[i, -1]
+        
+        return solution
+
 
 
 @app.route('/')
@@ -75,146 +278,92 @@ def index():
     return render_template('index.html')
 
 
-@app.route('/fonction', methods=['GET', 'POST'])
+@app.route('/fonction')
 def fonction():
-    from flask import make_response
+    n_vars = request.args.get('variables', 1, type=int)
+    n_constraints = request.args.get('contraintes', 1, type=int)
+    method = request.args.get('method', 'big_m')
     
-    if request.method == 'POST':
-        # Read form values
-        problem_type = request.form.get('type', 'max')
-        method = request.form.get('method', '')
-        objective_text = request.form.get('objective', '') or ''
-        constraints_text = request.form.get('constraints', '') or ''
+    return render_template('fonction.html',
+                         n_vars=n_vars,
+                         n_constraints=n_constraints,
+                         method=method)
+
+
+@app.route('/resultat')
+def resultat():
+    return render_template('resultat.html')
+
+
+@app.route('/solve', methods=['POST'])
+def solve():
+    data = request.json
+    
+    c = data.get('c', [])
+    A = data.get('A', [])
+    b = data.get('b', [])
+    signs = data.get('signs', [])
+    method = data.get('method', 'big_m')
+    objective_type = data.get('objective_type', 'max')
+    
+    try:
+        # Valider les entrées
+        if not c or not A or not b or not signs:
+            return jsonify({'success': False, 'message': 'Données incomplètes'}), 400
         
-        # DEBUG: Log incoming form data
-        print(f"\n=== DEBUG POST DATA ===")
-        print(f"problem_type: {problem_type}")
-        print(f"objective_text: '{objective_text}'")
-        print(f"constraints_text: '{constraints_text}'")
-        print(f"========================\n")
-
-        # Basic validation: require objective and constraints
-        if not objective_text.strip() or not constraints_text.strip():
-            error = 'Veuillez saisir la fonction objectif et les contraintes avant de continuer.'
-            resp = make_response(render_template('fonction.html', method_selected=problem_type,
-                                   objective_text=objective_text,
-                                   constraints_text=constraints_text,
-                                   error=error))
-            resp.headers['Cache-Control'] = 'no-cache, no-store, must-revalidate'
-            resp.headers['Pragma'] = 'no-cache'
-            resp.headers['Expires'] = '0'
-            return resp
-
-        obj = parse_objective(objective_text)
-        cons_parsed = parse_constraints(constraints_text)
+        # Convertir en tableaux numpy
+        c = np.array(c, dtype=float)
+        A = np.array(A, dtype=float)
+        b = np.array(b, dtype=float)
         
-        # Validate parsed data
-        if not obj:
-            error = 'Format de fonction objectif invalide. Utilise : 2x1 + 3x2 - x3'
-            resp = make_response(render_template('fonction.html', method_selected=problem_type,
-                                   objective_text=objective_text,
-                                   constraints_text=constraints_text,
-                                   error=error))
-            resp.headers['Cache-Control'] = 'no-cache, no-store, must-revalidate'
-            resp.headers['Pragma'] = 'no-cache'
-            resp.headers['Expires'] = '0'
-            return resp
+        # Déterminer si c'est une maximisation ou minimisation
+        is_maximization = (objective_type == 'max')
         
-        # Filter valid constraints
-        cons_parsed = [c for c in cons_parsed if c.get('valid', True)]
-        if not cons_parsed:
-            error = 'Aucune contrainte valide trouvée. Format attendu : x1 + 2x2 <= 100'
-            resp = make_response(render_template('fonction.html', method_selected=problem_type,
-                                   objective_text=objective_text,
-                                   constraints_text=constraints_text,
-                                   error=error))
-            resp.headers['Cache-Control'] = 'no-cache, no-store, must-revalidate'
-            resp.headers['Pragma'] = 'no-cache'
-            resp.headers['Expires'] = '0'
-            return resp
-
-        # build matrices for linprog
-        A_ub, b_ub, A_eq, b_eq = [], [], [], []
-        # determine number of variables from objective or constraints
-        n = len(obj) if obj else 0
-        for c in cons_parsed:
-            if c['coeffs']:
-                n = max(n, max(c['coeffs'].keys()))
+        # IMPORTANT: L'algorithme du simplexe minimise toujours
+        # Pour maximisation: minimiser -c, puis inverser le résultat
+        # Pour minimisation: minimiser c directement
+        if is_maximization:
+            c = -c
         
-        # build coefficient rows (skip invalid constraints)
-        for c in cons_parsed:
-            if c['coeffs'] and c['rhs'] is not None:
-                row = [c['coeffs'].get(i, 0.0) for i in range(1, n + 1)]
-                if c['sense'] == '<=':
-                    A_ub.append(row); b_ub.append(c['rhs'])
-                elif c['sense'] == '>=':
-                    A_ub.append([-x for x in row]); b_ub.append(-c['rhs'])
-                elif c['sense'] == '=':
-                    A_eq.append(row); b_eq.append(c['rhs'])
-
-        c = obj + [0.0] * (n - len(obj))
-        if problem_type.lower() == 'max':
-            c = [-x for x in c]
+        # Valider les dimensions
+        if A.shape[0] != len(b) or A.shape[1] != len(c):
+            return jsonify({'success': False, 'message': 'Dimensions incompatibles'}), 400
         
-        # Add bounds for non-negativity: each variable x_i >= 0
-        bounds = [(0, None) for _ in range(n)]
-
-        try:
-            res = linprog(c=c, A_ub=A_ub or None, b_ub=b_ub or None,
-                          A_eq=A_eq or None, b_eq=b_eq or None, 
-                          bounds=bounds, method='highs')
-            if res.success:
-                Z = -res.fun if problem_type.lower() == 'max' else res.fun
-                # Format solution with reasonable precision
-                x_vals = [round(v, 6) for v in res.x.tolist()]
-                
-                # Build formatted result for display
-                result_data = {
-                    'success': True,
-                    'objective_type': 'MAXIMISER' if problem_type.lower() == 'max' else 'MINIMISER',
-                    'objective': objective_text,
-                    'constraints': constraints_text,
-                    'variables': [f'x{i+1}' for i in range(len(x_vals))],
-                    'values': x_vals,
-                    'Z': round(Z, 6),
-                    'message': f'Solution optimale trouvée'
-                }
-            else:
-                result_data = {
-                    'success': False,
-                    'message': f"Pas de solution optimale : {res.message}"
-                }
-        except Exception as e:
-            result_data = {
-                'success': False,
-                'message': f"Erreur lors du calcul : {str(e)}"
-            }
+        # Valider les signes
+        for sign in signs:
+            if sign not in ['<=', '>=', '=']:
+                return jsonify({'success': False, 'message': f'Signe invalide: {sign}'}), 400
         
-        # DEBUG: Log result
-        print(f"\n=== DEBUG RESULT ===")
-        print(f"result_data: {result_data}")
-        print(f"===================\n")
-
-        resp = make_response(render_template('resultat.html', result=result_data))
-        resp.headers['Cache-Control'] = 'no-cache, no-store, must-revalidate'
-        resp.headers['Pragma'] = 'no-cache'
-        resp.headers['Expires'] = '0'
-        return resp
-
-    # GET: prefill fonction form if query params provided
-    # Prefill fonction form when coming from index (GET params)
-    method_selected = request.args.get('method', '')
-    variables = request.args.get('variables', '')
-    contraintes = request.args.get('contraintes', '')
-    # Pass counts so template can optionally use them
-    resp = make_response(render_template('fonction.html', method_selected=method_selected,
-                           objective_text='', constraints_text='',
-                           variables_count=variables, contraintes_count=contraintes,
-                           error=None))
-    resp.headers['Cache-Control'] = 'no-cache, no-store, must-revalidate'
-    resp.headers['Pragma'] = 'no-cache'
-    resp.headers['Expires'] = '0'
-    return resp
+        # Gérer les valeurs b négatives - nécessite inversion de l'inégalité
+        for i in range(len(b)):
+            if b[i] < 0:
+                A[i] = -A[i]
+                b[i] = -b[i]
+                # Inverser le signe
+                if signs[i] == '<=':
+                    signs[i] = '>='
+                elif signs[i] == '>=':
+                    signs[i] = '<='
+                # '=' reste '='
+        
+        # Résoudre
+        solver = SimplexSolver(c.tolist(), A.tolist(), b.tolist(), signs, method, is_maximization)
+        
+        if method == 'big_m':
+            result = solver.solve_big_m()
+        else:
+            result = solver.solve_two_phase()
+        
+        # Inverser la valeur optimale si c'était une MAXIMISATION (car on a minimisé -c)
+        if result.get('success') and is_maximization:
+            result['optimal_value'] = -result['optimal_value']
+        
+        return jsonify(result)
+    
+    except ValueError as e:
+        return jsonify({'success': False, 'message': f'Erreur de valeur: {str(e)}'}), 400
+    except Exception as e:
+        return jsonify({'success': False, 'message': f'Erreur: {str(e)}'}), 400
 
 
 if __name__ == '__main__':
