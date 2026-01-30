@@ -95,15 +95,71 @@ class SimplexSolver:
     
     def solve_big_m(self):
         """
-        Méthode du Grand M.
+        Big-M Method: Single phase approach with penalty on artificial variables.
         
-        Approche: Utiliser la méthode à deux phases
-        - Phase 1: Minimiser la somme des variables artificielles
-        - Phase 2: Minimiser/Maximiser l'objectif réel
+        Minimize: c₁x₁ + ... + cₙxₙ + M·a₁ + M·a₂ + ...
         
-        Cela évite les problèmes numériques avec M très grande.
+        Where M is a very large penalty (avoids multiple phases)
         """
-        return self.solve_two_phase()
+        A_std, b_std = self.convert_to_standard_form()
+        n_cols = A_std.shape[1]
+        
+        # Calculate M: must be larger than any coefficient in the problem
+        M = max(abs(self.c)) * 1000 + 1000  # Large penalty value
+        
+        # Create objective: original coefficients + M penalty for artificial variables
+        c_bigm = [0] * n_cols
+        for i in range(self.n_vars):
+            c_bigm[i] = self.c[i]
+        
+        # Add M penalty for each artificial variable
+        for idx in self.artificial_vars:
+            c_bigm[idx] = M
+        
+        c_bigm = np.array(c_bigm, dtype=float)
+        
+        tableau = self._create_tableau(A_std, b_std, c_bigm)
+        
+        # IMPORTANT: Normalize the objective row (canonical form)
+        # For each artificial variable that is basic, subtract its row from objective row
+        for artificial_idx in self.artificial_vars:
+            for row_idx in range(tableau.shape[0] - 1):
+                if abs(tableau[row_idx, artificial_idx] - 1.0) < 1e-10:
+                    # This artificial variable is basic
+                    # Subtract this row from objective row (weighted by M)
+                    tableau[-1, :-1] -= M * tableau[row_idx, :-1]
+                    tableau[-1, -1] -= M * tableau[row_idx, -1]
+                    break
+        
+        result, final_tableau = self._solve_tableau(deepcopy(tableau), "Big-M - Single Phase")
+        
+        if result.get('success'):
+            solution = self._extract_solution(final_tableau)
+            
+            # Check if any artificial variables are non-zero (indicates infeasibility)
+            for art_idx in self.artificial_vars:
+                col = final_tableau[:-1, art_idx]
+                # Check if this variable is basic and non-zero
+                if np.count_nonzero(col) == 1:
+                    i = np.where(col != 0)[0][0]
+                    if abs(col[i] - 1.0) < 1e-10:
+                        value = final_tableau[i, -1]
+                        if value > 1e-6:
+                            return {
+                                'success': False,
+                                'message': f'Aucune solution réalisable trouvée (artificial var > 0: {value:.6f})'
+                            }
+            
+            return {
+                'success': True,
+                'solution': solution.tolist(),
+                'optimal_value': float(result.get('optimal_value', 0)),
+                'iterations': len(self.iterations),
+                'method': 'Big-M',
+                'message': 'Solution optimale trouvée'
+            }
+        
+        return result
     
     def solve_two_phase(self):
         """Méthode à deux phases"""
