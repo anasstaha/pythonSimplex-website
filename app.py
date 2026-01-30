@@ -119,6 +119,20 @@ class SimplexSolver:
             c_phase1 = np.array(c_phase1, dtype=float)
             
             tableau = self._create_tableau(A_std, b_std, c_phase1)
+            
+            # IMPORTANT: Normalize the objective row so that basic variables have coefficient 0
+            # This is done by subtracting the constraint rows from the objective row
+            # BUT: Do NOT subtract the RHS (last column) to avoid changing the objective value
+            for artificial_idx in self.artificial_vars:
+                # Find the row where this artificial variable is basic (has coefficient 1)
+                for row_idx in range(tableau.shape[0] - 1):  # Exclude objective row
+                    if abs(tableau[row_idx, artificial_idx] - 1.0) < 1e-10:
+                        # This artificial variable is basic in row_idx
+                        # Subtract this row from the objective row, except for the RHS part
+                        tableau[-1, :-1] -= tableau[row_idx, :-1]
+                        tableau[-1, -1] -= tableau[row_idx, -1]  # Also subtract RHS to maintain canonical form
+                        break
+            
             result1, tableau_phase1 = self._solve_tableau(deepcopy(tableau), "Phase 1 - Minimiser variables artificielles")
             
             # Vérifier si une solution de base réalisable existe
@@ -186,7 +200,7 @@ class SimplexSolver:
         """Résoudre le tableau du simplexe"""
         iteration = 0
         max_iterations = 1000
-        epsilon = 1e-10
+        epsilon = 1e-8  # Increased from 1e-10 for numerical stability
         
         while iteration < max_iterations:
             # Sauvegarder l'itération
@@ -198,8 +212,12 @@ class SimplexSolver:
             self.iterations.append(iteration)
             
             # Vérifier l'optimalité (tous les coefficients de la ligne de Z >= 0)
+            # Pour la minimisation, la ligne est -c, et nous voulons que tous les coefficients soient >= 0
             last_row = tableau[-1, :-1]
-            if np.all(last_row >= -epsilon):
+            # IMPORTANT: Use a smaller threshold (like -epsilon instead of >= -epsilon)
+            # Check if minimum coefficient is close to zero or positive
+            min_coeff = np.min(last_row)
+            if min_coeff >= -epsilon:
                 # Solution optimale trouvée
                 solution = self._extract_solution(tableau)
                 optimal_value = -tableau[-1, -1]
@@ -220,12 +238,14 @@ class SimplexSolver:
             min_ratio = float('inf')
             pivot_row = -1
             
-            # IMPORTANT: Le test du rapport minimum DOIT utiliser seulement des coefficients positifs
-            # Sinon, pivoter sur un coefficient négatif rendrait le RHS négatif (infaisable)
+            # IMPORTANT: Pour une variable entrant dans la base:
+            # - Si son coefficient dans une contrainte est POSITIF: ratio = RHS / coefficient >= 0
+            # - Si son coefficient est NEGATIF: on ne peut pas utiliser cette ligne (augmenter rendrait RHS negatif)
+            # Le test du rapport minimum DOIT utiliser seulement des coefficients avec le même signe que on veut
             for i in range(len(col)):
-                if col[i] > epsilon:  # Seulement coefficients POSITIFS
+                if col[i] > epsilon:  # Coefficient positif
                     ratio = tableau[i, -1] / col[i]
-                    if ratio >= -epsilon:  # Ratio non-négatif (peut être zéro pour dégénérescence)
+                    if ratio >= -epsilon:  # Ratio >= 0 (or close to 0 for degeneracy)
                         if ratio < min_ratio:
                             min_ratio = ratio
                             pivot_row = i
