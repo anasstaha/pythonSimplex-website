@@ -208,6 +208,21 @@ class SimplexSolver:
             tableau_phase2[-1, :-1] = -c_phase2
             tableau_phase2[-1, -1] = 0
             
+            # CRITICAL FIX: Adjust Phase 2 objective row to canonical form
+            # For each variable that is basic in the Phase 1 solution, make its coefficient 0
+            for col_idx in range(n_cols):
+                # Check if this column is a basic variable
+                col = tableau_phase2[:-1, col_idx]
+                if np.count_nonzero(col) == 1:
+                    # Check if the non-zero element is exactly 1
+                    row_idx = np.where(col != 0)[0][0]
+                    if abs(col[row_idx] - 1.0) < 1e-10:
+                        # This is a basic variable
+                        coeff = tableau_phase2[-1, col_idx]
+                        if abs(coeff) > 1e-10:
+                            # Make its coefficient 0 in the objective row
+                            tableau_phase2[-1, :] -= coeff * tableau_phase2[row_idx, :]
+            
             # Adapter le tableau pour la phase 2 (éliminer les variables artificielles)
             result2, final_tableau = self._solve_tableau(tableau_phase2, "Phase 2 - Résoudre le problème original")
             
