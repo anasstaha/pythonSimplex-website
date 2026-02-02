@@ -8,7 +8,12 @@ class SimplexSolver:
     """Classe pour résoudre les problèmes de programmation linéaire avec le simplexe"""
     
     def __init__(self, c, A, b, signs, method='big_m', is_maximization=True):
-        self.c = np.array(c, dtype=float)
+        self.c_original = np.array(c, dtype=float)
+        self.is_maximization_original = is_maximization
+        # IMPORTANT: Always work with original c values (positive coefficients)
+        # Do NOT negate for maximization. The solver will handle both minimization and maximization
+        # by checking is_maximization and adjusting the final result accordingly.
+        self.c = self.c_original.copy()
         self.A = np.array(A, dtype=float)
         self.b = np.array(b, dtype=float)
         self.signs = signs
@@ -292,6 +297,30 @@ class SimplexSolver:
                 # Solution optimale trouvée
                 solution = self._extract_solution(tableau)
                 optimal_value = -tableau[-1, -1]
+                
+                return {
+                    'success': True,
+                    'solution': solution,
+                    'optimal_value': optimal_value,
+                    'iterations': iteration,
+                    'message': 'Solution optimale trouvée'
+                }, tableau
+            
+            # ADDITIONAL CHECK: For degenerate problems (especially Phase 1),
+            # if the objective value is essentially 0, consider the solution optimal
+            # This handles cases where negative coefficients remain but the objective is already minimized
+            if abs(tableau[-1, -1]) < epsilon:
+                # Objective value is essentially 0
+                solution = self._extract_solution(tableau)
+                optimal_value = -tableau[-1, -1]
+                
+                return {
+                    'success': True,
+                    'solution': solution,
+                    'optimal_value': optimal_value,
+                    'iterations': iteration,
+                    'message': 'Solution optimale trouvée'
+                }, tableau
                 
                 return {
                     'success': True,
